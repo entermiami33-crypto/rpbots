@@ -1,11 +1,11 @@
-FROM node:22-alpine
+FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY app/package*.json ./
+COPY requirements.txt .
 
-RUN npm install --production
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ .
+COPY . .
 
-CMD ["node", "server.js"]
+CMD ["python", "bot.py"]
