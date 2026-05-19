@@ -13,6 +13,28 @@ const ADMIN_ID_2 = 6514315888;
 const ADMIN_IDS = [ADMIN_ID, ADMIN_ID_2];
 const users = {};
 
+// --- Persistent user list ---
+const DB_FILE = path.join(__dirname, "userdb.json");
+
+function loadUserDB() {
+  if (fs.existsSync(DB_FILE)) {
+    try { return JSON.parse(fs.readFileSync(DB_FILE, "utf8")); } catch { return []; }
+  }
+  return [];
+}
+
+function saveUserDB(ids) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(ids), "utf8");
+}
+
+function registerUser(chatId) {
+  const ids = loadUserDB();
+  if (!ids.includes(chatId)) {
+    ids.push(chatId);
+    saveUserDB(ids);
+  }
+}
+
 const mainKeyboard = {
   reply_markup: {
     keyboard: [
@@ -45,10 +67,35 @@ bot.onText(/\/send (.+)/, async (msg, match) => {
   }
 });
 
+bot.onText(/\/all (.+)/, async (msg, match) => {
+  const senderId = msg.chat.id;
+
+  if (!ADMIN_IDS.includes(senderId)) return;
+
+  const message = match[1];
+  const allUsers = loadUserDB();
+
+  let sent = 0, failed = 0;
+
+  await bot.sendMessage(senderId, `📤 Sending to ${allUsers.length} users...`);
+
+  for (const uid of allUsers) {
+    try {
+      await bot.sendMessage(uid, `📢 *Announcement:*\n\n${message}`, { parse_mode: "Markdown" });
+      sent++;
+    } catch (err) {
+      failed++;
+    }
+  }
+
+  bot.sendMessage(senderId, `✅ Broadcast done!\n\n📨 Sent: ${sent}\n❌ Failed: ${failed}`);
+});
+
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
   users[chatId] = { step: null };
+  registerUser(chatId);
 
   const welcomeMessage = `🛡️ *INSTAGRAM ACCOUNT RECOVERY CENTER*
 ━━━━━━━━━━━━━━━━━━━━━━
